@@ -4,9 +4,27 @@ internal class Program
 {
     private static async Task Main(string[] args)
     {
-        using var httpClient = new HttpClient();
-        var client = new Client(httpClient, validateRoundTrip: true);
-        // var index = await client.ReadIndexAsync("https://apiint.nugettest.org/v3/catalog0/index.json");
-        var page = await client.ReadPageAsync("https://apiint.nugettest.org/v3/catalog0/page2036.json");
+        var tokenProvider = new TokenProvider();
+        var store = new InMemoryWriterStore(tokenProvider);
+        var writer = new Writer(store);
+        var commit = new Commit
+        {
+            BaseUrl = "https://api.nuget.org/v3/catalog0/",
+            Id = tokenProvider.GetGuidString(),
+            CommitTimestamp = tokenProvider.GetDateTimeOffset(),
+            Events =
+            [
+                new PackageEvent
+                {
+                    NuGetId = tokenProvider.GetNuGetId(),
+                    NuGetVersion = tokenProvider.GetNuGetVersion(),
+                    Type = "nuget:PackageDetails",
+                },
+            ],
+            NuGetLastCreated = tokenProvider.GetDateTimeOffset(),
+            NuGetLastEdited = tokenProvider.GetDateTimeOffset(),
+            NuGetLastDeleted = tokenProvider.GetDateTimeOffset(),
+        };
+        await writer.WriteAsync(commit);
     }
 }
