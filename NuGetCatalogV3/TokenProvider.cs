@@ -36,6 +36,12 @@ public class TokenProvider
         return $"Package{next}";
     }
 
+    public int GetRandomNumber(int min, int max)
+    {
+        var seed = Interlocked.Increment(ref _next);
+        return new Random(seed).Next(min, max);
+    }
+
     public string GetNuGetVersion()
     {
         var next = Interlocked.Increment(ref _next);

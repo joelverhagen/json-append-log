@@ -38,7 +38,11 @@ public class Writer
             };
         }
 
-        PageItem? latestPageItem = index.Items.MaxBy(item => item.CommitTimestamp);
+        PageItem? latestPageItem = GetLatestPageItem(index);
+        if (latestPageItem is null && indexResult is not null)
+        {
+            throw new InvalidOperationException("The index must have at least one page item.");
+        }
 
         if (latestPageItem is not null && latestPageItem.Count + commit.Events.Count <= MaxItemsPerPage)
         {
@@ -52,6 +56,8 @@ public class Writer
 
             await _store.UpdatePageAsync(latestPage, latestPageResult.ETag);
 
+            latestPageItem.CommitId = latestPage.CommitId;
+            latestPageItem.CommitTimestamp = latestPage.CommitTimestamp;
             latestPageItem.Count = latestPage.Items.Count;
         }
         else
@@ -80,7 +86,7 @@ public class Writer
             });
             index.Count = index.Items.Count;
         }
-        
+
         index.CommitId = commit.Id;
         index.CommitTimestamp = commit.CommitTimestamp;
 
@@ -94,17 +100,38 @@ public class Writer
         }
     }
 
-    private static IEnumerable<LeafItem> GenerateLeafItems(Commit commit)
+    private static PageItem? GetLatestPageItem(Index index)
     {
-        return commit.Events.Select(e => new LeafItem
+        PageItem? latestPageItem = null;
+        for (var i = index.Items.Count - 1; i >= 0 && latestPageItem is null; i--)
         {
-            Id = GenerateLeafId(commit.BaseUrl, commit.CommitTimestamp, e.NuGetId, e.NuGetVersion),
-            CommitId = commit.Id,
-            CommitTimestamp = commit.CommitTimestamp,
-            NuGetId = e.NuGetId,
-            NuGetVersion = e.NuGetVersion,
-            Type = e.Type,
-        });
+            if (index.Items[i].CommitId == index.CommitId)
+            {
+                latestPageItem = index.Items[i];
+            }
+        }
+
+        return latestPageItem;
+    }
+
+    private static List<LeafItem> GenerateLeafItems(Commit commit)
+    {
+        var leafItems = new List<LeafItem>(commit.Events.Count);
+
+        foreach (var e in commit.Events)
+        {
+            leafItems.Add(new LeafItem
+            {
+                Id = GenerateLeafId(commit.BaseUrl, commit.CommitTimestamp, e.NuGetId, e.NuGetVersion),
+                CommitId = commit.Id,
+                CommitTimestamp = commit.CommitTimestamp,
+                NuGetId = e.NuGetId,
+                NuGetVersion = e.NuGetVersion,
+                Type = e.Type,
+            });
+        }
+
+        return leafItems;
     }
 
     private static string GenerateIndexId(string baseUrl)

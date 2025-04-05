@@ -5,7 +5,7 @@ namespace JsonLog.NuGetCatalogV3;
 
 public class Client
 {
-    private static JsonSerializerOptions LegacyEncoder => new JsonSerializerOptions
+    public static JsonSerializerOptions LegacyEncoder => new JsonSerializerOptions
     {
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
     };
