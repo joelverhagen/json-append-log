@@ -30,14 +30,8 @@ internal class Program
 
         int eventCount = 0;
         int passedMillion = 0;
-        while (eventCount < 8_000_000)
+        do
         {
-            if (eventCount > passedMillion)
-            {
-                Console.WriteLine($"Wrote {eventCount} events");
-                passedMillion += 1_000_000;
-            }
-
             var commit = new Commit
             {
                 BaseUrl = baseUrl,
@@ -61,6 +55,12 @@ internal class Program
             await writer.WriteAsync(commit);
 
             eventCount += commit.Events.Count;
+            if (eventCount > passedMillion)
+            {
+                Console.WriteLine($"Wrote {eventCount} events");
+                passedMillion += 1_000_000;
+            }
         }
+        while (eventCount < 15_000_000);
     }
 }
