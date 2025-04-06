@@ -29,8 +29,7 @@ public class FileCatalogWriterStore : ICatalogWriterStore
                     throw new InvalidOperationException("Failed to deserialize index.");
                 }
 
-                var etag = File.GetLastWriteTimeUtc(filePath).Ticks.ToString();
-                return new ReadResult<CatalogIndex>(index, etag);
+                return new ReadResult<CatalogIndex>(index, GetETag(filePath));
             }
             catch (FileNotFoundException)
             {
@@ -74,8 +73,7 @@ public class FileCatalogWriterStore : ICatalogWriterStore
             var filePath = Path.Combine(_baseDirectory, "index.json");
             try
             {
-                var currentEtag = File.GetLastWriteTimeUtc(filePath).Ticks.ToString();
-                if (currentEtag != etag)
+                if (GetETag(filePath) != etag)
                 {
                     return WriteResultType.Conflict;
                 }
@@ -110,8 +108,7 @@ public class FileCatalogWriterStore : ICatalogWriterStore
                     throw new InvalidOperationException("Failed to deserialize page.");
                 }
 
-                var etag = File.GetLastWriteTimeUtc(filePath).Ticks.ToString();
-                return new ReadResult<CatalogPage>(page, etag);
+                return new ReadResult<CatalogPage>(page, GetETag(filePath));
             }
             catch (FileNotFoundException)
             {
@@ -156,8 +153,7 @@ public class FileCatalogWriterStore : ICatalogWriterStore
             var filePath = Path.Combine(_baseDirectory, GetFileNameFromId(page.Id));
             try
             {
-                var currentEtag = File.GetLastWriteTimeUtc(filePath).Ticks.ToString();
-                if (currentEtag != etag)
+                if (GetETag(filePath) != etag)
                 {
                     return WriteResultType.Conflict;
                 }
@@ -175,6 +171,11 @@ public class FileCatalogWriterStore : ICatalogWriterStore
         {
             _lock.Release();
         }
+    }
+
+    private static string GetETag(string path)
+    {
+        return $"\"{File.GetLastWriteTimeUtc(path).Ticks}\"";
     }
 
     private string GetFileNameFromId(string id)
