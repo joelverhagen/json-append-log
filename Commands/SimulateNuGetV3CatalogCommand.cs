@@ -26,22 +26,27 @@ public class SimulateNuGetV3CatalogCommand : AsyncCommand<SimulateNuGetV3Catalog
         public EventSourceType EventSourceType { get; set; } = EventSourceType.Random;
 
         [CommandOption("--leaf-base-url")]
-        [Description("The base URL to use for the leaf documents. Defaults to NuGet production environment.")]
+        [Description("The base URL to use for the leaf documents. Defaults to NuGet production environment")]
         public string LeafBaseUrl { get; set; } = "https://api.nuget.org/v3/catalog0/";
 
         [CommandOption("--event-count")]
-        [Description("Number of events to write. Defaults to 15 million for the memory event source.")]
+        [Description("Number of events to write. Defaults to 15 million for the memory event source")]
         public long EventCount { get; set; } = -1;
 
         [CommandOption("--db-path")]
         [Description("Source path for the SQLite database to be read with the database event source. Defaults to commits.db in the current working directory")]
         public string DbPath { get; set; } = "commits.db";
+
+        [CommandOption("--destination-dir")]
+        [Description("Directory path for file system destination storage")]
+        public string DestinationDirectory { get; set; } = "catalog0";
     }
 
     public enum StorageType
     {
         Memory,
         StorageEmulator,
+        FileSystem,
     }
 
     public enum EventSourceType
@@ -62,10 +67,12 @@ public class SimulateNuGetV3CatalogCommand : AsyncCommand<SimulateNuGetV3Catalog
         switch (settings.DestinationStorageType)
         {
             case StorageType.Memory:
+                AnsiConsole.MarkupLineInterpolated($"Writing events to memory storage.");
                 baseUrl = $"http://127.0.0.1:10000/devstoreaccount1/catalog0/";
                 store = new MemoryCatalogWriterStore(_tokenProvider);
                 break;
             case StorageType.StorageEmulator:
+                AnsiConsole.MarkupLineInterpolated($"Writing events to the Azure Storage emulator.");
                 var container = new BlobContainerClient("UseDevelopmentStorage=true", "catalog0");
                 baseUrl = $"{container.Uri.AbsoluteUri}/";
 
@@ -74,11 +81,22 @@ public class SimulateNuGetV3CatalogCommand : AsyncCommand<SimulateNuGetV3Catalog
 
                 store = new BlobCatalogWriterStore(container, baseUrl);
                 break;
+            case StorageType.FileSystem:
+                var destinationDir = Path.GetFullPath(settings.DestinationDirectory);
+                AnsiConsole.MarkupLineInterpolated($"Writing events to {destinationDir}.");
+                baseUrl = $"file:///{destinationDir.Replace('\\', '/')}/";
+                if (Directory.Exists(destinationDir))
+                {
+                    Directory.Delete(destinationDir, recursive: true);
+                }
+                Directory.CreateDirectory(destinationDir);
+                store = new FileCatalogWriterStore(baseUrl, destinationDir);
+                break;
             default:
                 throw new NotImplementedException($"Unsupported storage type: {settings.DestinationStorageType}");
         }
 
-        await AnsiConsole
+        return await AnsiConsole
             .Progress()
             .Columns(
             [
@@ -111,6 +129,11 @@ public class SimulateNuGetV3CatalogCommand : AsyncCommand<SimulateNuGetV3Catalog
                             {
                                 var dbPath = Path.GetFullPath(settings.DbPath);
                                 AnsiConsole.MarkupLineInterpolated($"Reading SQLite database at {dbPath} for events.");
+                                if (!File.Exists(dbPath))
+                                {
+                                    AnsiConsole.MarkupLineInterpolated($"[red]Database file not found.[/]");
+                                    return 1;
+                                }
                                 connection = new SqliteConnection($"Data Source={dbPath}");
                                 connection.Open();
                                 var databaseEventCount = GetEventCount(connection);
@@ -122,7 +145,7 @@ public class SimulateNuGetV3CatalogCommand : AsyncCommand<SimulateNuGetV3Catalog
                                 else if (eventCount > databaseEventCount)
                                 {
                                     AnsiConsole.MarkupLineInterpolated($"[red]Only has {databaseEventCount} event are available in the database. Specify an event count less or equal to that.[/]");
-                                    return;
+                                    return 1;
                                 }
                                 else if (eventCount < databaseEventCount)
                                 {
@@ -144,14 +167,14 @@ public class SimulateNuGetV3CatalogCommand : AsyncCommand<SimulateNuGetV3Catalog
                         await writer.WriteAsync(commit, settings.LeafBaseUrl);
                         progress.Value += commit.Events.Count;
                     }
+
+                    return 0;
                 }
                 finally
                 {
                     connection?.Dispose();
                 }
             });
-
-        return 0;
     }
 
     private long GetEventCount(SqliteConnection connection)

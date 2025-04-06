@@ -121,6 +121,11 @@ public class BlobCatalogWriterStore : ICatalogWriterStore
 
     private string GetBlobNameFromId(string id)
     {
+        if (!id.StartsWith(_baseUrl))
+        {
+            throw new ArgumentException($"ID {id} must start with {_baseUrl}", nameof(id));
+        }
+
         return id.Substring(_baseUrl.Length);
     }
 }

@@ -5,9 +5,19 @@
       "commandLineArgs": "build-db --db-path nuget-prod-catalog.db",
       "workingDirectory": "."
     },
+    "blob-nuget-v3-catalog": {
+      "commandName": "Project",
+      "commandLineArgs": "simulate-nuget-v3-catalog --source Database --db-path nuget-prod-catalog.db --destination StorageEmulator --event-count 10000",
+      "workingDirectory": "."
+    },
+    "file-nuget-v3-catalog": {
+      "commandName": "Project",
+      "commandLineArgs": "simulate-nuget-v3-catalog --source Database --db-path nuget-prod-catalog.db --destination FileSystem --destination-dir artifacts/catalog0 --event-count 10000",
+      "workingDirectory": "."
+    },
     "simulate-nuget-v3-catalog": {
       "commandName": "Project",
-      "commandLineArgs": "simulate-nuget-v3-catalog --source database --destination StorageEmulator --db-path nuget-prod-catalog.db --event-count 10000",
+      "commandLineArgs": "simulate-nuget-v3-catalog --source Database --destination Memory --db-path nuget-prod-catalog.db",
       "workingDirectory": "."
     }
   }
