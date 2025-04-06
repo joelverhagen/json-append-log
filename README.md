@@ -41,3 +41,21 @@ so you can easily download the SQLite DB from the artifacts.
 
 `simulate-nuget-v3-catalog` - writes the catalog structure to memory or Azure Blob Storage emulator
 (such as Azurite).
+
+## Build your own catalog
+
+1. Download the latest `nuget-prod-catalog` from the latest [Build NuGet V3 Catalog DB](https://github.com/joelverhagen/json-append-log/actions/workflows/nuget-catalog-commits.yml).
+1. Extract the .zip. The file is over 1 GB.
+1. Install [Azurite](https://marketplace.visualstudio.com/items?itemName=Azurite.azurite) in VS Code.
+1. Start the Blob Storage emulator.
+1. Run the following command in the root of this repository. Fix up the `--db-path` option to be the location where you extracted the DB in step 2.
+   ```powershell
+   dotnet run --configuration Release -- `       simulate-nuget-v3-catalog `       --source Database --destination StorageEmulator `
+       --db-path path/to/nuget-prod-catalog.db `
+       --event-count 10000
+   ```
+1. Go to `http://127.0.0.1:10000/devstoreaccount1/catalog0/index.json`.
+
+The first 10,000 catalog events from NuGet.org PROD will be written to your storage emulator.
+
+The index and pages are stored in your blob storage. The leaf URLs point to `api.nuget.org`.
