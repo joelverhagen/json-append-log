@@ -1,4 +1,4 @@
-﻿namespace JsonLog.NuGetCatalogV3;
+﻿namespace JsonLog;
 
 public class PackageEvent
 {

@@ -2,7 +2,7 @@
 
 namespace JsonLog.NuGetCatalogV3;
 
-public class Index
+public class CatalogIndex
 {
     [JsonPropertyName("@id")]
     public required string Id { get; set; }
@@ -33,8 +33,8 @@ public class Index
     public required DateTimeOffset NuGetLastEdited { get; set; }
 
     [JsonPropertyName("items")]
-    public required List<PageItem> Items { get; set; }
+    public required List<CatalogPageItem> Items { get; set; }
 
     [JsonPropertyName("@context")]
-    public required IndexContext Context { get; set; }
+    public required CatalogIndexContext Context { get; set; }
 }

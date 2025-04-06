@@ -1,6 +1,6 @@
-﻿namespace JsonLog.NuGetCatalogV3;
+﻿namespace JsonLog;
 
-public class Commit
+public class CatalogCommit
 {
     public required string BaseUrl { get; set; }
     public required string Id { get; set; }

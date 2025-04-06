@@ -2,7 +2,7 @@
 
 namespace JsonLog.NuGetCatalogV3;
 
-public class ContextType
+public class CatalogContextType
 {
     [JsonPropertyName("@type")]
     public required string Type { get; set; }

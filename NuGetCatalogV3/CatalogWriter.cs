@@ -1,16 +1,16 @@
 ﻿namespace JsonLog.NuGetCatalogV3;
 
-public class Writer
+public class CatalogWriter
 {
     private const int MaxItemsPerPage = 2750;
-    private readonly IWriterStore _store;
+    private readonly ICatalogWriterStore _store;
 
-    public Writer(IWriterStore store)
+    public CatalogWriter(ICatalogWriterStore store)
     {
         _store = store;
     }
 
-    public async Task WriteAsync(Commit commit)
+    public async Task WriteAsync(CatalogCommit commit)
     {
         if (commit.Events.Count == 0)
         {
@@ -19,11 +19,11 @@ public class Writer
 
         var indexResult = await _store.ReadIndexAsync();
 
-        Index? index = indexResult?.Value;
+        CatalogIndex? index = indexResult?.Value;
 
         if (index is null)
         {
-            index = new Index
+            index = new CatalogIndex
             {
                 Id = GenerateIndexId(commit.BaseUrl),
                 Type = ["CatalogRoot", "AppendOnlyCatalog", "Permalink"],
@@ -34,11 +34,11 @@ public class Writer
                 NuGetLastDeleted = commit.NuGetLastDeleted,
                 NuGetLastEdited = commit.NuGetLastEdited,
                 Items = [],
-                Context = IndexContext.Default,
+                Context = CatalogIndexContext.Default,
             };
         }
 
-        PageItem? latestPageItem = GetLatestPageItem(index);
+        CatalogPageItem? latestPageItem = GetLatestPageItem(index);
         if (latestPageItem is null && indexResult is not null)
         {
             throw new InvalidOperationException("The index must have at least one page item.");
@@ -62,7 +62,7 @@ public class Writer
         }
         else
         {
-            var newPage = new Page
+            var newPage = new CatalogPage
             {
                 Id = GeneratePageId(commit.BaseUrl, index.Items.Count),
                 Type = "CatalogPage",
@@ -71,12 +71,12 @@ public class Writer
                 Count = commit.Events.Count,
                 Parent = index.Id,
                 Items = GenerateLeafItems(commit).ToList(),
-                Context = IndexContext.Default,
+                Context = CatalogIndexContext.Default,
             };
 
             await _store.AddPageAsync(newPage);
 
-            index.Items.Add(new PageItem
+            index.Items.Add(new CatalogPageItem
             {
                 Id = newPage.Id,
                 Type = newPage.Type,
@@ -100,9 +100,9 @@ public class Writer
         }
     }
 
-    private static PageItem? GetLatestPageItem(Index index)
+    private static CatalogPageItem? GetLatestPageItem(CatalogIndex index)
     {
-        PageItem? latestPageItem = null;
+        CatalogPageItem? latestPageItem = null;
         for (var i = index.Items.Count - 1; i >= 0 && latestPageItem is null; i--)
         {
             if (index.Items[i].CommitId == index.CommitId)
@@ -114,13 +114,13 @@ public class Writer
         return latestPageItem;
     }
 
-    private static List<LeafItem> GenerateLeafItems(Commit commit)
+    private static List<CatalogLeafItem> GenerateLeafItems(CatalogCommit commit)
     {
-        var leafItems = new List<LeafItem>(commit.Events.Count);
+        var leafItems = new List<CatalogLeafItem>(commit.Events.Count);
 
         foreach (var e in commit.Events)
         {
-            leafItems.Add(new LeafItem
+            leafItems.Add(new CatalogLeafItem
             {
                 Id = GenerateLeafId(commit.BaseUrl, commit.CommitTimestamp, e.NuGetId, e.NuGetVersion),
                 CommitId = commit.Id,

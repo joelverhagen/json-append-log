@@ -2,7 +2,7 @@
 
 namespace JsonLog.NuGetCatalogV3;
 
-public class Page
+public class CatalogPage
 {
     [JsonPropertyName("@id")]
     public required string Id { get; set; }
@@ -24,8 +24,8 @@ public class Page
     public required string Parent { get; set; }
 
     [JsonPropertyName("items")]
-    public required List<LeafItem> Items { get; set; }
+    public required List<CatalogLeafItem> Items { get; set; }
 
     [JsonPropertyName("@context")]
-    public required IndexContext Context { get; set; }
+    public required CatalogIndexContext Context { get; set; }
 }

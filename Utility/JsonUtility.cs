@@ -3,7 +3,7 @@ using DiffEngine;
 using DiffPlex.DiffBuilder;
 using DiffPlex.DiffBuilder.Model;
 
-namespace JsonLog.NuGetCatalogV3;
+namespace JsonLog.Utility;
 
 public static class JsonUtility
 {
@@ -42,7 +42,7 @@ public static class JsonUtility
                     File.WriteAllText(serializedTemp, serializedJsonIndented);
                 }
 
-                var launchResult = DiffRunner.Launch(originalTemp, serializedTemp);
+                var launchResult = DiffRunner.Launch(DiffTool.BeyondCompare, originalTemp, serializedTemp);
                 if (launchResult == LaunchResult.NoDiffToolFound)
                 {
                     throw new JsonException("No diff tool found.");

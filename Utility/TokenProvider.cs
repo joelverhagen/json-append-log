@@ -1,4 +1,4 @@
-﻿namespace JsonLog.NuGetCatalogV3;
+namespace JsonLog.Utility;
 
 public class TokenProvider
 {
@@ -36,10 +36,10 @@ public class TokenProvider
         return $"Package{next}";
     }
 
-    public int GetRandomNumber(int min, int max)
+    public long GetRandomNumber(long minInclusive, long maxExclusive)
     {
         var seed = Interlocked.Increment(ref _next);
-        return new Random(seed).Next(min, max);
+        return new Random(seed).NextInt64(minInclusive, maxExclusive);
     }
 
     public string GetNuGetVersion()

@@ -1,32 +1,39 @@
 ﻿using System.Text.Encodings.Web;
 using System.Text.Json;
+using JsonLog.Utility;
 
 namespace JsonLog.NuGetCatalogV3;
 
-public class Client
+public class CatalogClient
 {
     public static JsonSerializerOptions LegacyEncoder => new JsonSerializerOptions
     {
+        WriteIndented = false,
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+    };
+    public static JsonSerializerOptions LegacyEncoderIndented => new JsonSerializerOptions
+    {
+        WriteIndented = true,
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
     };
 
     private readonly HttpClient _httpClient;
     private readonly bool _validateRoundTrip;
 
-    public Client(HttpClient httpClient, bool validateRoundTrip)
+    public CatalogClient(HttpClient httpClient)
     {
         _httpClient = httpClient;
-        _validateRoundTrip = validateRoundTrip;
+        _validateRoundTrip = false;
     }
 
-    public async Task<Index> ReadIndexAsync(string url)
+    public async Task<CatalogIndex> ReadIndexAsync(string url)
     {
-        return await ReadAsync<Index>(url, LegacyEncoder);
+        return await ReadAsync<CatalogIndex>(url, LegacyEncoder);
     }
 
-    public async Task<Page> ReadPageAsync(string url)
+    public async Task<CatalogPage> ReadPageAsync(string url)
     {
-        return await ReadAsync<Page>(url, LegacyEncoder);
+        return await ReadAsync<CatalogPage>(url, LegacyEncoder);
     }
 
     private async Task<T> ReadAsync<T>(string url, JsonSerializerOptions options)

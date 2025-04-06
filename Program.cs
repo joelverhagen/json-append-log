@@ -1,66 +1,41 @@
-﻿using Azure.Storage.Blobs;
-using Azure.Storage.Blobs.Models;
+using JsonLog.Commands;
+using JsonLog.Infrastructure;
 using JsonLog.NuGetCatalogV3;
+using JsonLog.Utility;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Polly;
+
+namespace JsonLog;
 
 internal class Program
 {
-    private static async Task Main(string[] args)
+    private static async Task<int> Main(string[] args)
     {
-        var tokenProvider = new TokenProvider();
-
-        string baseUrl;
-        IWriterStore store;
-        if (args.FirstOrDefault() == "blobs")
-        {
-            var container = new BlobContainerClient("UseDevelopmentStorage=true", "catalog0");
-            baseUrl = $"{container.Uri.AbsoluteUri}/";
-
-            await container.DeleteIfExistsAsync();
-            await container.CreateAsync(publicAccessType: PublicAccessType.Blob);
-
-            store = new BlobWriterStore(container, baseUrl);
-        }
-        else
-        {
-            baseUrl = $"http://127.0.0.1:10000/devstoreaccount1/catalog0/";
-            store = new InMemoryWriterStore(tokenProvider);
-        }
-
-        var writer = new Writer(store);
-
-        int eventCount = 0;
-        int passedMillion = 0;
-        do
-        {
-            var commit = new Commit
+        var builder = Host.CreateDefaultBuilder()
+            .ConfigureLogging(logging =>
             {
-                BaseUrl = baseUrl,
-                Id = tokenProvider.GetGuidString(),
-                CommitTimestamp = tokenProvider.GetDateTimeOffset(),
-                Events = Enumerable
-                    .Range(0, tokenProvider.GetRandomNumber(1, 21))
-                    .Select(x => new PackageEvent
-                    {
-                        NuGetId = tokenProvider.GetNuGetId(),
-                        NuGetVersion = tokenProvider.GetNuGetVersion(),
-                        Type = "nuget:PackageDetails",
-                    })
-                    .ToList(),
-                NuGetLastCreated = tokenProvider.GetDateTimeOffset(),
-                NuGetLastEdited = tokenProvider.GetDateTimeOffset(),
-                NuGetLastDeleted = tokenProvider.GetDateTimeOffset(),
-            };
-            // Console.WriteLine($"Writing commit {commit.Id}...");
-
-            await writer.WriteAsync(commit);
-
-            eventCount += commit.Events.Count;
-            if (eventCount > passedMillion)
+                logging.ClearProviders();
+            })
+            .ConfigureServices(services =>
             {
-                Console.WriteLine($"Wrote {eventCount} events");
-                passedMillion += 1_000_000;
-            }
-        }
-        while (eventCount < 15_000_000);
+                services.AddSingleton<TokenProvider>();
+                services.AddTransient<CatalogClient>();
+                services
+                    .AddHttpClient<CatalogClient>()
+                    .AddTransientHttpErrorPolicy(policyBuilder =>
+                        policyBuilder.WaitAndRetryAsync(
+                            retryCount: 3,
+                            retryNumber => TimeSpan.FromMilliseconds(600)));
+
+                services.AddCommandLine(config =>
+                {
+                    config.AddCommand<BuildDbCommand>("build-db");
+                    config.AddCommand<SimulateNuGetV3CatalogCommand>("simulate-nuget-v3-catalog");
+                });
+            });
+
+        return await builder.Build().RunAsync(args);
     }
 }

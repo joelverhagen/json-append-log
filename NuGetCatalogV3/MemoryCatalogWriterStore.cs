@@ -1,18 +1,20 @@
-﻿namespace JsonLog.NuGetCatalogV3;
+﻿using JsonLog.Utility;
 
-public class InMemoryWriterStore : IWriterStore
+namespace JsonLog.NuGetCatalogV3;
+
+public class MemoryCatalogWriterStore : ICatalogWriterStore
 {
     private readonly SemaphoreSlim _lock = new(1);
-    private ReadResult<Index>? _index;
-    private readonly Dictionary<string, ReadResult<Page>> _pages = new();
+    private ReadResult<CatalogIndex>? _index;
+    private readonly Dictionary<string, ReadResult<CatalogPage>> _pages = new();
     private readonly TokenProvider _tokenProvider;
 
-    public InMemoryWriterStore(TokenProvider tokenProvider)
+    public MemoryCatalogWriterStore(TokenProvider tokenProvider)
     {
         _tokenProvider = tokenProvider;
     }
 
-    public async Task<ReadResult<Index>?> ReadIndexAsync()
+    public async Task<ReadResult<CatalogIndex>?> ReadIndexAsync()
     {
         await _lock.WaitAsync();
         try
@@ -30,7 +32,7 @@ public class InMemoryWriterStore : IWriterStore
         }
     }
 
-    public async Task<WriteResultType> AddIndexAsync(Index index)
+    public async Task<WriteResultType> AddIndexAsync(CatalogIndex index)
     {
         await _lock.WaitAsync();
         try
@@ -40,7 +42,7 @@ public class InMemoryWriterStore : IWriterStore
                 return WriteResultType.Conflict;
             }
 
-            _index = new ReadResult<Index>(index, _tokenProvider.GetETag());
+            _index = new ReadResult<CatalogIndex>(index, _tokenProvider.GetETag());
             return WriteResultType.Success;
         }
         finally
@@ -49,7 +51,7 @@ public class InMemoryWriterStore : IWriterStore
         }
     }
 
-    public async Task<WriteResultType> UpdateIndexAsync(Index index, string etag)
+    public async Task<WriteResultType> UpdateIndexAsync(CatalogIndex index, string etag)
     {
         await _lock.WaitAsync();
         try
@@ -64,7 +66,7 @@ public class InMemoryWriterStore : IWriterStore
                 return WriteResultType.Conflict;
             }
 
-            _index = new ReadResult<Index>(index, _tokenProvider.GetETag());
+            _index = new ReadResult<CatalogIndex>(index, _tokenProvider.GetETag());
             return WriteResultType.Success;
         }
         finally
@@ -73,7 +75,7 @@ public class InMemoryWriterStore : IWriterStore
         }
     }
 
-    public async Task<ReadResult<Page>> ReadPageAsync(string id)
+    public async Task<ReadResult<CatalogPage>> ReadPageAsync(string id)
     {
         await _lock.WaitAsync();
         try
@@ -91,7 +93,7 @@ public class InMemoryWriterStore : IWriterStore
         }
     }
 
-    public async Task<WriteResultType> AddPageAsync(Page page)
+    public async Task<WriteResultType> AddPageAsync(CatalogPage page)
     {
         await _lock.WaitAsync();
         try
@@ -101,7 +103,7 @@ public class InMemoryWriterStore : IWriterStore
                 return WriteResultType.Conflict;
             }
 
-            _pages[page.Id] = new ReadResult<Page>(page, _tokenProvider.GetETag());
+            _pages[page.Id] = new ReadResult<CatalogPage>(page, _tokenProvider.GetETag());
             return WriteResultType.Success;
         }
         finally
@@ -110,7 +112,7 @@ public class InMemoryWriterStore : IWriterStore
         }
     }
 
-    public async Task<WriteResultType> UpdatePageAsync(Page page, string etag)
+    public async Task<WriteResultType> UpdatePageAsync(CatalogPage page, string etag)
     {
         await _lock.WaitAsync();
         try
@@ -125,7 +127,7 @@ public class InMemoryWriterStore : IWriterStore
                 return WriteResultType.Conflict;
             }
 
-            _pages[page.Id] = new ReadResult<Page>(page, _tokenProvider.GetETag());
+            _pages[page.Id] = new ReadResult<CatalogPage>(page, _tokenProvider.GetETag());
             return WriteResultType.Success;
         }
         finally
