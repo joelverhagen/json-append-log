@@ -1,6 +1,7 @@
 # JSON append log
 
-This is an experimental repository. My goal is to try a new design for the NuGet V3 catalog protocol.
+This is an experimental repository. My goal is to try a new design for the
+[NuGet V3 catalog protocol](https://learn.microsoft.com/en-us/nuget/api/catalog-resource) ([how-to](https://learn.microsoft.com/en-us/nuget/guides/api/query-for-all-published-packages)).
 Currently it has an `catalog0/index.json` file that is growing infinitely. The growth rate is not too
 bad but the it's more than 3 MB of JSON right now.
 
@@ -17,7 +18,8 @@ Related issues on NuGet/NuGetGallery:
 
 Ideally the design works well on a blob storage (e.g. Azure Blob Storage) with CDN in front of it, to utilize
 caching to the best of its ability. The current design is pretty good for that but the root node (index)
-grows in an unbounded way.
+grows in an unbounded way. The completed page nodes have a long `Cache-Control` but the latest page and the index
+have no caching at all.
 
 A tail resource might be the best solution since it would be additive to the current
 protocol.
@@ -25,6 +27,9 @@ protocol.
 I was originally thinking a B-tree was the right plan but that is optimized for accessing
 any of the keys. I imagine users will either want the latest entries or want to start from
 the beginning. Accessing somewhere in the middle of the event log seems less important.
+
+I think it would be cool to generate a JSON append log for other package ecosystems using the
+same schema. For example, the npm replication API could be projected into this.
 
 ## Tools
 
