@@ -36,7 +36,8 @@ same schema. For example, the npm replication API could be projected into this.
 Right now the source is a CLI tool with two commands.
 
 `build-db` - creates a SQLite DB with all of the catalog commits. This is enough information to
-reproduce the index and page nodes of the catalog.
+reproduce the index and page nodes of the catalog. This is [run in GitHub Actions](https://github.com/joelverhagen/json-append-log/actions/workflows/nuget-catalog-commits.yml)
+so you can easily download the SQLite DB from the artifacts.
 
 `simulate-nuget-v3-catalog` - writes the catalog structure to memory or Azure Blob Storage emulator
 (such as Azurite).
