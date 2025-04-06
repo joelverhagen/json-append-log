@@ -25,6 +25,10 @@ public class SimulateNuGetV3CatalogCommand : AsyncCommand<SimulateNuGetV3Catalog
         [Description("Event source type to use. Defaults to random")]
         public EventSourceType EventSourceType { get; set; } = EventSourceType.Random;
 
+        [CommandOption("--leaf-base-url")]
+        [Description("The base URL to use for the leaf documents. Defaults to NuGet production environment.")]
+        public string LeafBaseUrl { get; set; } = "https://api.nuget.org/v3/catalog0/";
+
         [CommandOption("--event-count")]
         [Description("Number of events to write. Defaults to 15 million for the memory event source.")]
         public long EventCount { get; set; } = -1;
@@ -105,8 +109,9 @@ public class SimulateNuGetV3CatalogCommand : AsyncCommand<SimulateNuGetV3Catalog
                             }
                         case EventSourceType.Database:
                             {
-                                AnsiConsole.MarkupLineInterpolated($"Reading SQLite database at {settings.DbPath} for events.");
-                                connection = new SqliteConnection($"Data Source={settings.DbPath}");
+                                var dbPath = Path.GetFullPath(settings.DbPath);
+                                AnsiConsole.MarkupLineInterpolated($"Reading SQLite database at {dbPath} for events.");
+                                connection = new SqliteConnection($"Data Source={dbPath}");
                                 connection.Open();
                                 var databaseEventCount = GetEventCount(connection);
                                 if (eventCount < 0)
@@ -136,7 +141,7 @@ public class SimulateNuGetV3CatalogCommand : AsyncCommand<SimulateNuGetV3Catalog
                     var writer = new CatalogWriter(store);
                     foreach (var commit in commits)
                     {
-                        await writer.WriteAsync(commit);
+                        await writer.WriteAsync(commit, settings.LeafBaseUrl);
                         progress.Value += commit.Events.Count;
                     }
                 }

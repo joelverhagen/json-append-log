@@ -1,4 +1,4 @@
-﻿namespace JsonLog.NuGetCatalogV3;
+namespace JsonLog.NuGetCatalogV3;
 
 public class CatalogWriter
 {
@@ -10,7 +10,7 @@ public class CatalogWriter
         _store = store;
     }
 
-    public async Task WriteAsync(CatalogCommit commit)
+    public async Task WriteAsync(CatalogCommit commit, string leafBaseUrl)
     {
         if (commit.Events.Count == 0)
         {
@@ -49,7 +49,7 @@ public class CatalogWriter
             var latestPageResult = await _store.ReadPageAsync(latestPageItem.Id);
 
             var latestPage = latestPageResult.Value;
-            latestPage.Items.AddRange(GenerateLeafItems(commit));
+            latestPage.Items.AddRange(GenerateLeafItems(commit, leafBaseUrl));
             latestPage.CommitId = commit.Id;
             latestPage.CommitTimestamp = commit.CommitTimestamp;
             latestPage.Count = latestPage.Items.Count;
@@ -70,7 +70,7 @@ public class CatalogWriter
                 CommitTimestamp = commit.CommitTimestamp,
                 Count = commit.Events.Count,
                 Parent = index.Id,
-                Items = GenerateLeafItems(commit).ToList(),
+                Items = GenerateLeafItems(commit, leafBaseUrl).ToList(),
                 Context = CatalogIndexContext.Default,
             };
 
@@ -114,7 +114,7 @@ public class CatalogWriter
         return latestPageItem;
     }
 
-    private static List<CatalogLeafItem> GenerateLeafItems(CatalogCommit commit)
+    private static List<CatalogLeafItem> GenerateLeafItems(CatalogCommit commit, string leafBaseUrl)
     {
         var leafItems = new List<CatalogLeafItem>(commit.Events.Count);
 
@@ -122,7 +122,7 @@ public class CatalogWriter
         {
             leafItems.Add(new CatalogLeafItem
             {
-                Id = GenerateLeafId(commit.BaseUrl, commit.CommitTimestamp, e.NuGetId, e.NuGetVersion),
+                Id = GenerateLeafId(leafBaseUrl, commit.CommitTimestamp, e.NuGetId, e.NuGetVersion),
                 CommitId = commit.Id,
                 CommitTimestamp = commit.CommitTimestamp,
                 NuGetId = e.NuGetId,
@@ -144,8 +144,8 @@ public class CatalogWriter
         return $"{baseUrl}page{pageIndex}.json";
     }
 
-    private static string GenerateLeafId(string baseUrl, DateTimeOffset commitTimestamp, string nuGetId, string nuGetVersion)
+    private static string GenerateLeafId(string leafBaseUrl, DateTimeOffset commitTimestamp, string nuGetId, string nuGetVersion)
     {
-        return $"{baseUrl}data/{commitTimestamp:yyyy.MM.dd.HH.mm.ss}/{nuGetId.ToLowerInvariant()}/{nuGetVersion.ToLowerInvariant()}.json";
+        return $"{leafBaseUrl}data/{commitTimestamp:yyyy.MM.dd.HH.mm.ss}/{nuGetId.ToLowerInvariant()}.{nuGetVersion.ToLowerInvariant()}.json";
     }
 }

@@ -2,12 +2,12 @@
   "profiles": {
     "build-db": {
       "commandName": "Project",
-      "commandLineArgs": "build-db --db-path commits.db",
+      "commandLineArgs": "build-db --db-path nuget-prod-catalog.db",
       "workingDirectory": "."
     },
     "simulate-nuget-v3-catalog": {
       "commandName": "Project",
-      "commandLineArgs": "simulate-nuget-v3-catalog --source database --destination StorageEmulator --db-path commits.db --event-count 50000",
+      "commandLineArgs": "simulate-nuget-v3-catalog --source database --destination StorageEmulator --db-path nuget-prod-catalog.db --event-count 10000",
       "workingDirectory": "."
     }
   }
