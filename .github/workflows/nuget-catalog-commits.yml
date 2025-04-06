@@ -26,8 +26,8 @@ jobs:
       run: dotnet run -- build-db --db-path artifacts/nuget-int-commits.db --catalog-index https://apiint.nugettest.org/v3/catalog0/index.json
     # - name: Build DEV DB
     #   run: dotnet run -- build-db --db-path artifacts/nuget-dev-commits.db --catalog-index https://apidev.nugettest.org/v3/catalog0/index.json
-    - name: Upload DB Artifacts
-      uses: actions/upload-artifact@v3
+    - name: Upload INT DB
+      uses: actions/upload-artifact@v4
       with:
-        name: nuget-catalog-dbs
-        path: artifacts/*.db
+        name: nuget-int-commits
+        path: artifacts/nuget-int-commits.db
