@@ -22,7 +22,7 @@ jobs:
       run: dotnet build --no-restore
 
     - name: Build PROD DB
-      run: dotnet run -- build-db --db-path artifacts/nuget-prod-catalog.db --catalog-index https://api.nuget.org/v3/catalog0/index.json
+      run: dotnet run --configuration Release -- build-db --db-path artifacts/nuget-prod-catalog.db --catalog-index https://api.nuget.org/v3/catalog0/index.json
     - name: Upload PROD DB
       uses: actions/upload-artifact@v4
       with:
@@ -33,7 +33,7 @@ jobs:
         if-no-files-found: error
 
     - name: Build INT DB
-      run: dotnet run -- build-db --db-path artifacts/nuget-int-catalog.db --catalog-index https://apiint.nugettest.org/v3/catalog0/index.json
+      run: dotnet run --configuration Release -- build-db --db-path artifacts/nuget-int-catalog.db --catalog-index https://apiint.nugettest.org/v3/catalog0/index.json
     - name: Upload INT DB
       uses: actions/upload-artifact@v4
       with:
@@ -44,7 +44,7 @@ jobs:
         if-no-files-found: error
 
     - name: Build DEV DB
-      run: dotnet run -- build-db --db-path artifacts/nuget-dev-catalog.db --catalog-index https://apidev.nugettest.org/v3/catalog0/index.json
+      run: dotnet run --configuration Release -- build-db --db-path artifacts/nuget-dev-catalog.db --catalog-index https://apidev.nugettest.org/v3/catalog0/index.json
     - name: Upload DEV DB
       uses: actions/upload-artifact@v4
       with:
