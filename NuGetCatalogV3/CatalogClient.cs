@@ -1,4 +1,4 @@
-﻿using System.Text.Encodings.Web;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using JsonLog.Utility;
 
@@ -6,12 +6,12 @@ namespace JsonLog.NuGetCatalogV3;
 
 public class CatalogClient
 {
-    public static JsonSerializerOptions LegacyEncoder => new JsonSerializerOptions
+    public static JsonSerializerOptions LegacyEncoder { get; } = new JsonSerializerOptions
     {
         WriteIndented = false,
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
     };
-    public static JsonSerializerOptions LegacyEncoderIndented => new JsonSerializerOptions
+    public static JsonSerializerOptions LegacyEncoderIndented { get; } = new JsonSerializerOptions
     {
         WriteIndented = true,
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,

@@ -1,4 +1,4 @@
-﻿using JsonLog.Utility;
+using JsonLog.Utility;
 
 namespace JsonLog.NuGetCatalogV3;
 
@@ -6,7 +6,8 @@ public class MemoryCatalogWriterStore : ICatalogWriterStore
 {
     private readonly SemaphoreSlim _lock = new(1);
     private ReadResult<CatalogIndex>? _index;
-    private readonly Dictionary<string, ReadResult<CatalogPage>> _pages = new();
+    private long _indexSize;
+    private readonly Dictionary<string, (ReadResult<CatalogPage> Result, long Size)> _pages = new();
     private readonly TokenProvider _tokenProvider;
 
     public MemoryCatalogWriterStore(TokenProvider tokenProvider)
@@ -43,6 +44,7 @@ public class MemoryCatalogWriterStore : ICatalogWriterStore
             }
 
             _index = new ReadResult<CatalogIndex>(index, _tokenProvider.GetETag());
+            _indexSize = JsonUtility.GetJsonSize(index, CatalogClient.LegacyEncoder);
             return WriteResultType.Success;
         }
         finally
@@ -67,6 +69,7 @@ public class MemoryCatalogWriterStore : ICatalogWriterStore
             }
 
             _index = new ReadResult<CatalogIndex>(index, _tokenProvider.GetETag());
+            _indexSize = JsonUtility.GetJsonSize(index, CatalogClient.LegacyEncoder);
             return WriteResultType.Success;
         }
         finally
@@ -80,12 +83,12 @@ public class MemoryCatalogWriterStore : ICatalogWriterStore
         await _lock.WaitAsync();
         try
         {
-            if (!_pages.TryGetValue(id, out var page))
+            if (!_pages.TryGetValue(id, out var info))
             {
                 throw new InvalidOperationException($"Page {id} not found.");
             }
 
-            return page;
+            return info.Result;
         }
         finally
         {
@@ -103,7 +106,8 @@ public class MemoryCatalogWriterStore : ICatalogWriterStore
                 return WriteResultType.Conflict;
             }
 
-            _pages[page.Id] = new ReadResult<CatalogPage>(page, _tokenProvider.GetETag());
+            var pageSize = JsonUtility.GetJsonSize(page, CatalogClient.LegacyEncoder);
+            _pages[page.Id] = (new ReadResult<CatalogPage>(page, _tokenProvider.GetETag()), pageSize);
             return WriteResultType.Success;
         }
         finally
@@ -117,17 +121,18 @@ public class MemoryCatalogWriterStore : ICatalogWriterStore
         await _lock.WaitAsync();
         try
         {
-            if (!_pages.TryGetValue(page.Id, out var existingPage))
+            if (!_pages.TryGetValue(page.Id, out var info))
             {
                 return WriteResultType.Conflict;
             }
 
-            if (existingPage.ETag != etag)
+            if (info.Result.ETag != etag)
             {
                 return WriteResultType.Conflict;
             }
 
-            _pages[page.Id] = new ReadResult<CatalogPage>(page, _tokenProvider.GetETag());
+            var pageSize = JsonUtility.GetJsonSize(page, CatalogClient.LegacyEncoder);
+            _pages[page.Id] = (new ReadResult<CatalogPage>(page, _tokenProvider.GetETag()), pageSize);
             return WriteResultType.Success;
         }
         finally

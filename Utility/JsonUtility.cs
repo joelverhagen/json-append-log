@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+using System.Buffers;
+using System.Text.Json;
 using DiffEngine;
 using DiffPlex.DiffBuilder;
 using DiffPlex.DiffBuilder.Model;
@@ -7,6 +8,35 @@ namespace JsonLog.Utility;
 
 public static class JsonUtility
 {
+    private static readonly ArrayPool<byte> TrashPool = ArrayPool<byte>.Create();
+
+    public static long GetJsonSize<T>(T value, JsonSerializerOptions options)
+    {
+        var writer = new Utf8JsonWriter(NullBufferWriter.Instance);
+        JsonSerializer.Serialize(writer, value, options);
+        return writer.BytesCommitted;
+    }
+
+    private class NullBufferWriter : IBufferWriter<byte>
+    {
+        public static NullBufferWriter Instance { get; } = new();
+
+        public void Advance(int count)
+        {
+        }
+
+        public Memory<byte> GetMemory(int sizeHint = 0) => GetTrashBuffer(sizeHint);
+
+        public Span<byte> GetSpan(int sizeHint = 0) => GetTrashBuffer(sizeHint);
+
+        private static byte[] GetTrashBuffer(int sizeHint)
+        {
+            var buffer = TrashPool.Rent(sizeHint == 0 ? 1024 : sizeHint);
+            TrashPool.Return(buffer);
+            return buffer;
+        }
+    }
+
     public static void VerifyRoundTrip<T>(string originalJson, T deserialized, JsonSerializerOptions options)
     {
         var serializedJson = JsonSerializer.Serialize(deserialized, options);

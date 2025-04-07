@@ -1,5 +1,10 @@
 {
   "profiles": {
+    "sandbox": {
+      "commandName": "Project",
+      "commandLineArgs": "sandbox",
+      "workingDirectory": "."
+    },
     "build-db": {
       "commandName": "Project",
       "commandLineArgs": "build-db --db-path nuget-prod-catalog.db",
@@ -15,7 +20,7 @@
       "commandLineArgs": "simulate-nuget-v3-catalog --source Database --db-path nuget-prod-catalog.db --destination FileSystem --destination-dir catalog0 --event-count 10000",
       "workingDirectory": "."
     },
-    "simulate-nuget-v3-catalog": {
+    "memory-nuget-v3-catalog": {
       "commandName": "Project",
       "commandLineArgs": "simulate-nuget-v3-catalog --source Database --destination Memory --db-path nuget-prod-catalog.db",
       "workingDirectory": "."

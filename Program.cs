@@ -31,6 +31,7 @@ internal class Program
 
                 services.AddCommandLine(config =>
                 {
+                    config.AddCommand<SandboxCommand>("sandbox");
                     config.AddCommand<BuildDbCommand>("build-db");
                     config.AddCommand<SimulateNuGetV3CatalogCommand>("simulate-nuget-v3-catalog");
                 });
