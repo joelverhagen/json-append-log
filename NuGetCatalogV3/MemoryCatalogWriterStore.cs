@@ -33,19 +33,18 @@ public class MemoryCatalogWriterStore : ICatalogWriterStore
         }
     }
 
-    public async Task<WriteResultType> AddIndexAsync(CatalogIndex index)
+    public async Task AddIndexAsync(CatalogIndex index)
     {
         await _lock.WaitAsync();
         try
         {
             if (_index is not null)
             {
-                return WriteResultType.Conflict;
+                throw new InvalidOperationException("Index already exists.");
             }
 
             _index = new ReadResult<CatalogIndex>(index, _tokenProvider.GetETag());
             _indexSize = JsonUtility.GetJsonSize(index, CatalogClient.LegacyEncoder);
-            return WriteResultType.Success;
         }
         finally
         {
@@ -53,24 +52,23 @@ public class MemoryCatalogWriterStore : ICatalogWriterStore
         }
     }
 
-    public async Task<WriteResultType> UpdateIndexAsync(CatalogIndex index, string etag)
+    public async Task UpdateIndexAsync(CatalogIndex index, string etag)
     {
         await _lock.WaitAsync();
         try
         {
             if (_index is null)
             {
-                return WriteResultType.Conflict;
+                throw new InvalidOperationException("Index does not exist.");
             }
 
             if (_index.ETag != etag)
             {
-                return WriteResultType.Conflict;
+                throw new InvalidOperationException("ETag mismatch.");
             }
 
             _index = new ReadResult<CatalogIndex>(index, _tokenProvider.GetETag());
             _indexSize = JsonUtility.GetJsonSize(index, CatalogClient.LegacyEncoder);
-            return WriteResultType.Success;
         }
         finally
         {
@@ -96,19 +94,18 @@ public class MemoryCatalogWriterStore : ICatalogWriterStore
         }
     }
 
-    public async Task<WriteResultType> AddPageAsync(CatalogPage page)
+    public async Task AddPageAsync(CatalogPage page)
     {
         await _lock.WaitAsync();
         try
         {
             if (_pages.ContainsKey(page.Id))
             {
-                return WriteResultType.Conflict;
+                throw new InvalidOperationException($"Page {page.Id} already exists.");
             }
 
             var pageSize = JsonUtility.GetJsonSize(page, CatalogClient.LegacyEncoder);
             _pages[page.Id] = (new ReadResult<CatalogPage>(page, _tokenProvider.GetETag()), pageSize);
-            return WriteResultType.Success;
         }
         finally
         {
@@ -116,24 +113,23 @@ public class MemoryCatalogWriterStore : ICatalogWriterStore
         }
     }
 
-    public async Task<WriteResultType> UpdatePageAsync(CatalogPage page, string etag)
+    public async Task UpdatePageAsync(CatalogPage page, string etag)
     {
         await _lock.WaitAsync();
         try
         {
             if (!_pages.TryGetValue(page.Id, out var info))
             {
-                return WriteResultType.Conflict;
+                throw new InvalidOperationException($"Page {page.Id} not found.");
             }
 
             if (info.Result.ETag != etag)
             {
-                return WriteResultType.Conflict;
+                throw new InvalidOperationException("ETag mismatch.");
             }
 
             var pageSize = JsonUtility.GetJsonSize(page, CatalogClient.LegacyEncoder);
             _pages[page.Id] = (new ReadResult<CatalogPage>(page, _tokenProvider.GetETag()), pageSize);
-            return WriteResultType.Success;
         }
         finally
         {

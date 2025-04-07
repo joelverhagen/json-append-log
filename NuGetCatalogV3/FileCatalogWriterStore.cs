@@ -42,22 +42,14 @@ public class FileCatalogWriterStore : ICatalogWriterStore
         }
     }
 
-    public async Task<WriteResultType> AddIndexAsync(CatalogIndex index)
+    public async Task AddIndexAsync(CatalogIndex index)
     {
         await _lock.WaitAsync();
         try
         {
             var filePath = Path.Combine(_baseDirectory, "index.json");
-            try
-            {
-                using var stream = new FileStream(filePath, FileMode.CreateNew);
-                await JsonSerializer.SerializeAsync(stream, index);
-                return WriteResultType.Success;
-            }
-            catch (IOException)
-            {
-                return WriteResultType.Conflict;
-            }
+            using var stream = new FileStream(filePath, FileMode.CreateNew);
+            await JsonSerializer.SerializeAsync(stream, index);
         }
         finally
         {
@@ -65,27 +57,19 @@ public class FileCatalogWriterStore : ICatalogWriterStore
         }
     }
 
-    public async Task<WriteResultType> UpdateIndexAsync(CatalogIndex index, string etag)
+    public async Task UpdateIndexAsync(CatalogIndex index, string etag)
     {
         await _lock.WaitAsync();
         try
         {
             var filePath = Path.Combine(_baseDirectory, "index.json");
-            try
+            if (GetETag(filePath) != etag)
             {
-                if (GetETag(filePath) != etag)
-                {
-                    return WriteResultType.Conflict;
-                }
+                throw new InvalidOperationException("ETag mismatch.");
+            }
 
-                using var stream = new FileStream(filePath, FileMode.Create);
-                await JsonSerializer.SerializeAsync(stream, index);
-                return WriteResultType.Success;
-            }
-            catch (FileNotFoundException)
-            {
-                return WriteResultType.Conflict;
-            }
+            using var stream = new FileStream(filePath, FileMode.Create);
+            await JsonSerializer.SerializeAsync(stream, index);
         }
         finally
         {
@@ -121,22 +105,14 @@ public class FileCatalogWriterStore : ICatalogWriterStore
         }
     }
 
-    public async Task<WriteResultType> AddPageAsync(CatalogPage page)
+    public async Task AddPageAsync(CatalogPage page)
     {
         await _lock.WaitAsync();
         try
         {
             var filePath = Path.Combine(_baseDirectory, GetFileNameFromId(page.Id));
-            try
-            {
-                using var stream = new FileStream(filePath, FileMode.CreateNew);
-                await JsonSerializer.SerializeAsync(stream, page);
-                return WriteResultType.Success;
-            }
-            catch (IOException)
-            {
-                return WriteResultType.Conflict;
-            }
+            using var stream = new FileStream(filePath, FileMode.CreateNew);
+            await JsonSerializer.SerializeAsync(stream, page);
         }
         finally
         {
@@ -145,27 +121,19 @@ public class FileCatalogWriterStore : ICatalogWriterStore
 
     }
 
-    public async Task<WriteResultType> UpdatePageAsync(CatalogPage page, string etag)
+    public async Task UpdatePageAsync(CatalogPage page, string etag)
     {
         await _lock.WaitAsync();
         try
         {
             var filePath = Path.Combine(_baseDirectory, GetFileNameFromId(page.Id));
-            try
+            if (GetETag(filePath) != etag)
             {
-                if (GetETag(filePath) != etag)
-                {
-                    return WriteResultType.Conflict;
-                }
+                throw new InvalidOperationException("ETag mismatch.");
+            }
 
-                using var stream = new FileStream(filePath, FileMode.Create);
-                await JsonSerializer.SerializeAsync(stream, page);
-                return WriteResultType.Success;
-            }
-            catch (FileNotFoundException)
-            {
-                return WriteResultType.Conflict;
-            }
+            using var stream = new FileStream(filePath, FileMode.Create);
+            await JsonSerializer.SerializeAsync(stream, page);
         }
         finally
         {

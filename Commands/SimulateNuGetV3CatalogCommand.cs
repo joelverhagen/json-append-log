@@ -122,7 +122,7 @@ public class SimulateNuGetV3CatalogCommand : AsyncCommand<SimulateNuGetV3Catalog
                                 }
 
                                 AnsiConsole.MarkupLineInterpolated($"Generating {eventCount} random events.");
-                                commits = GenerateRandomCommits(baseUrl, eventCount);
+                                commits = GenerateRandomCommits(eventCount);
                                 break;
                             }
                         case EventSourceType.Database:
@@ -152,7 +152,7 @@ public class SimulateNuGetV3CatalogCommand : AsyncCommand<SimulateNuGetV3Catalog
                                     AnsiConsole.MarkupLineInterpolated($"The database has {databaseEventCount} events. Only the first {eventCount} events will be used.");
                                 }
 
-                                commits = GetDatabaseCommits(baseUrl, connection, eventCount);
+                                commits = GetDatabaseCommits(connection, eventCount);
                                 break;
                             }
                         default:
@@ -162,10 +162,31 @@ public class SimulateNuGetV3CatalogCommand : AsyncCommand<SimulateNuGetV3Catalog
                     var progress = ctx.AddTask("[green]Writing events[/]", maxValue: eventCount);
 
                     var writer = new CatalogWriter(store);
+                    var commitList = new List<CatalogCommit>();
+                    var commitListSize = 0;
+
                     foreach (var commit in commits)
                     {
-                        await writer.WriteAsync(commit, settings.LeafBaseUrl);
-                        progress.Value += commit.Events.Count;
+                        if (commitListSize + commit.Events.Count > CatalogWriter.MaxItemsPerPage * 2)
+                        {
+                            await writer.WriteAsync(commitList, baseUrl, settings.LeafBaseUrl);
+                            var newCommitListSize = commitList.Sum(c => c.Events.Count);
+                            var committed = commitListSize - newCommitListSize;
+                            progress.Value += committed;
+                            commitListSize = newCommitListSize;
+                        }
+
+                        commitList.Add(commit);
+                        commitListSize += commit.Events.Count;
+                    }
+
+                    while (commitList.Count > 0)
+                    {
+                        await writer.WriteAsync(commitList, baseUrl, settings.LeafBaseUrl);
+                        var newCommitListSize = commitList.Sum(c => c.Events.Count);
+                        var committed = commitListSize - newCommitListSize;
+                        progress.Value += committed;
+                        commitListSize = newCommitListSize;
                     }
 
                     return 0;
@@ -190,7 +211,7 @@ public class SimulateNuGetV3CatalogCommand : AsyncCommand<SimulateNuGetV3Catalog
         return (long)countCommand.ExecuteScalar()!;
     }
 
-    private IEnumerable<CatalogCommit> GetDatabaseCommits(string baseUrl, SqliteConnection connection, long eventCount)
+    private IEnumerable<CatalogCommit> GetDatabaseCommits(SqliteConnection connection, long eventCount)
     {
         using var commitsCommand = connection.CreateCommand();
         commitsCommand.CommandText =
@@ -247,7 +268,6 @@ public class SimulateNuGetV3CatalogCommand : AsyncCommand<SimulateNuGetV3Catalog
 
             var commit = new CatalogCommit
             {
-                BaseUrl = baseUrl,
                 Id = commitId,
                 CommitTimestamp = timestamp,
                 Events = events,
@@ -267,7 +287,7 @@ public class SimulateNuGetV3CatalogCommand : AsyncCommand<SimulateNuGetV3Catalog
         }
     }
 
-    private IEnumerable<CatalogCommit> GenerateRandomCommits(string baseUrl, long eventCount)
+    private IEnumerable<CatalogCommit> GenerateRandomCommits(long eventCount)
     {
         long eventCountSoFar = 0;
         do
@@ -276,7 +296,6 @@ public class SimulateNuGetV3CatalogCommand : AsyncCommand<SimulateNuGetV3Catalog
             var commitEventCount = (int)_tokenProvider.GetRandomNumber(1, Math.Min(20, eventsRemaining) + 1);
             var commit = new CatalogCommit
             {
-                BaseUrl = baseUrl,
                 Id = _tokenProvider.GetGuidString(),
                 CommitTimestamp = _tokenProvider.GetDateTimeOffset(),
                 Events = Enumerable

@@ -36,38 +36,22 @@ public class BlobCatalogWriterStore : ICatalogWriterStore
         }
     }
 
-    public async Task<WriteResultType> AddIndexAsync(CatalogIndex index)
+    public async Task AddIndexAsync(CatalogIndex index)
     {
         var blobClient = _containerClient.GetBlobClient("index.json");
-        try
-        {
-            var data = BinaryData.FromObjectAsJson(index, CatalogClient.LegacyEncoder);
-            await blobClient.UploadAsync(data, options: new BlobUploadOptions { HttpHeaders = new() { ContentType = "application/json" } });
-            return WriteResultType.Success;
-        }
-        catch (RequestFailedException ex) when (ex.ErrorCode == BlobErrorCode.BlobAlreadyExists)
-        {
-            return WriteResultType.Conflict;
-        }
+        var data = BinaryData.FromObjectAsJson(index, CatalogClient.LegacyEncoder);
+        await blobClient.UploadAsync(data, options: new BlobUploadOptions { HttpHeaders = new() { ContentType = "application/json" } });
     }
 
-    public async Task<WriteResultType> UpdateIndexAsync(CatalogIndex index, string etag)
+    public async Task UpdateIndexAsync(CatalogIndex index, string etag)
     {
         var blobClient = _containerClient.GetBlobClient("index.json");
-        try
+        var data = BinaryData.FromObjectAsJson(index, CatalogClient.LegacyEncoder);
+        await blobClient.UploadAsync(data, new BlobUploadOptions
         {
-            var data = BinaryData.FromObjectAsJson(index, CatalogClient.LegacyEncoder);
-            await blobClient.UploadAsync(data, new BlobUploadOptions
-            {
-                Conditions = new BlobRequestConditions { IfMatch = new ETag(etag) },
-                HttpHeaders = new() { ContentType = "application/json" },
-            });
-            return WriteResultType.Success;
-        }
-        catch (RequestFailedException ex) when (ex.ErrorCode == BlobErrorCode.ConditionNotMet)
-        {
-            return WriteResultType.Conflict;
-        }
+            Conditions = new BlobRequestConditions { IfMatch = new ETag(etag) },
+            HttpHeaders = new() { ContentType = "application/json" },
+        });
     }
 
     public async Task<ReadResult<CatalogPage>> ReadPageAsync(string id)
@@ -85,38 +69,22 @@ public class BlobCatalogWriterStore : ICatalogWriterStore
         return new ReadResult<CatalogPage>(page, result.Details.ETag.ToString());
     }
 
-    public async Task<WriteResultType> AddPageAsync(CatalogPage page)
+    public async Task AddPageAsync(CatalogPage page)
     {
         var blobClient = _containerClient.GetBlobClient(GetBlobNameFromId(page.Id));
-        try
-        {
-            var data = BinaryData.FromObjectAsJson(page, CatalogClient.LegacyEncoder);
-            await blobClient.UploadAsync(data, options: new BlobUploadOptions { HttpHeaders = new() { ContentType = "application/json" } });
-            return WriteResultType.Success;
-        }
-        catch (RequestFailedException ex) when (ex.ErrorCode == BlobErrorCode.BlobAlreadyExists)
-        {
-            return WriteResultType.Conflict;
-        }
+        var data = BinaryData.FromObjectAsJson(page, CatalogClient.LegacyEncoder);
+        await blobClient.UploadAsync(data, options: new BlobUploadOptions { HttpHeaders = new() { ContentType = "application/json" } });
     }
 
-    public async Task<WriteResultType> UpdatePageAsync(CatalogPage page, string etag)
+    public async Task UpdatePageAsync(CatalogPage page, string etag)
     {
         var blobClient = _containerClient.GetBlobClient(GetBlobNameFromId(page.Id));
-        try
+        var data = BinaryData.FromObjectAsJson(page, CatalogClient.LegacyEncoder);
+        await blobClient.UploadAsync(data, new BlobUploadOptions
         {
-            var data = BinaryData.FromObjectAsJson(page, CatalogClient.LegacyEncoder);
-            await blobClient.UploadAsync(data, new BlobUploadOptions
-            {
-                Conditions = new BlobRequestConditions { IfMatch = new ETag(etag) },
-                HttpHeaders = new() { ContentType = "application/json" },
-            });
-            return WriteResultType.Success;
-        }
-        catch (RequestFailedException ex) when (ex.ErrorCode == BlobErrorCode.ConditionNotMet)
-        {
-            return WriteResultType.Conflict;
-        }
+            Conditions = new BlobRequestConditions { IfMatch = new ETag(etag) },
+            HttpHeaders = new() { ContentType = "application/json" },
+        });
     }
 
     private string GetBlobNameFromId(string id)

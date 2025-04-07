@@ -2,7 +2,7 @@ namespace JsonLog.NuGetCatalogV3;
 
 public class CatalogWriter
 {
-    private const int MaxItemsPerPage = 2750;
+    public const int MaxItemsPerPage = 2750;
     private readonly ICatalogWriterStore _store;
 
     public CatalogWriter(ICatalogWriterStore store)
@@ -10,7 +10,7 @@ public class CatalogWriter
         _store = store;
     }
 
-    public async Task WriteAsync(CatalogCommit commit, string leafBaseUrl)
+    public async Task WriteAsync(CatalogCommit commit, string catalogBaseUrl, string leafBaseUrl)
     {
         if (commit.Events.Count == 0)
         {
@@ -25,7 +25,7 @@ public class CatalogWriter
         {
             index = new CatalogIndex
             {
-                Id = GenerateIndexId(commit.BaseUrl),
+                Id = GenerateIndexId(catalogBaseUrl),
                 Type = ["CatalogRoot", "AppendOnlyCatalog", "Permalink"],
                 CommitId = commit.Id,
                 CommitTimestamp = commit.CommitTimestamp,
@@ -64,7 +64,7 @@ public class CatalogWriter
         {
             var newPage = new CatalogPage
             {
-                Id = GeneratePageId(commit.BaseUrl, index.Items.Count),
+                Id = GeneratePageId(catalogBaseUrl, index.Items.Count),
                 Type = "CatalogPage",
                 CommitId = commit.Id,
                 CommitTimestamp = commit.CommitTimestamp,
@@ -97,6 +97,131 @@ public class CatalogWriter
         else
         {
             await _store.UpdateIndexAsync(index, indexResult.ETag);
+        }
+    }
+
+    public async Task WriteAsync(List<CatalogCommit> commits, string catalogBaseUrl, string leafBaseUrl)
+    {
+        if (commits.Count == 0)
+        {
+            throw new ArgumentException("The commits queue must not be empty.", nameof(commits));
+        }
+
+        var indexResult = await _store.ReadIndexAsync();
+        CatalogIndex? index = indexResult?.Value;
+        CatalogPageItem? latestPageItem;
+
+        if (index is null)
+        {
+            index = new CatalogIndex
+            {
+                Id = GenerateIndexId(catalogBaseUrl),
+                Type = ["CatalogRoot", "AppendOnlyCatalog", "Permalink"],
+                CommitId = string.Empty,
+                CommitTimestamp = default,
+                Count = 0,
+                NuGetLastCreated = default,
+                NuGetLastDeleted = default,
+                NuGetLastEdited = default,
+                Items = [],
+                Context = CatalogIndexContext.Default,
+            };
+            latestPageItem = null;
+        }
+        else
+        {
+            latestPageItem = GetLatestPageItem(index);
+            if (latestPageItem is null)
+            {
+                throw new InvalidOperationException("The index must have at least one page item.");
+            }
+        }
+
+        ReadResult<CatalogPage>? latestPageResult;
+        CatalogPage? page;
+
+        var lastCommit = commits[commits.Count - 1];
+        commits.RemoveAt(commits.Count - 1);
+        if (latestPageItem is not null && latestPageItem.Count + lastCommit.Events.Count <= MaxItemsPerPage)
+        {
+            latestPageResult = await _store.ReadPageAsync(latestPageItem.Id);
+            page = latestPageResult.Value;
+        }
+        else
+        {
+            latestPageResult = null;
+            page = new CatalogPage
+            {
+                Id = GeneratePageId(catalogBaseUrl, index.Items.Count),
+                Type = "CatalogPage",
+                CommitId = string.Empty,
+                CommitTimestamp = default,
+                Count = 0,
+                Parent = index.Id,
+                Items = [],
+                Context = CatalogIndexContext.Default,
+            };
+        }
+
+        var keepAddingCommits = true;
+        while (keepAddingCommits)
+        {
+            page.Items.AddRange(GenerateLeafItems(lastCommit, leafBaseUrl));
+
+            keepAddingCommits = commits.Count > 0 && page.Items.Count + commits[commits.Count - 1].Events.Count <= MaxItemsPerPage;
+            if (keepAddingCommits)
+            {
+                lastCommit = commits[commits.Count - 1];
+                commits.RemoveAt(commits.Count - 1);
+            }
+        }
+
+        page.CommitId = lastCommit.Id;
+        page.CommitTimestamp = lastCommit.CommitTimestamp;
+        page.Count = page.Items.Count;
+
+        if (latestPageResult is not null)
+        {
+            if (latestPageItem is null)
+            {
+                throw new InvalidOperationException("The latest page item must not be null.");
+            }
+
+            await _store.UpdatePageAsync(page, latestPageResult.ETag);
+
+            latestPageItem.CommitId = lastCommit.Id;
+            latestPageItem.CommitTimestamp = lastCommit.CommitTimestamp;
+            latestPageItem.Count = page.Items.Count;
+        }
+        else
+        {
+            await _store.AddPageAsync(page);
+
+            latestPageItem = new CatalogPageItem
+            {
+                Id = page.Id,
+                Type = page.Type,
+                CommitId = lastCommit.Id,
+                CommitTimestamp = lastCommit.CommitTimestamp,
+                Count = page.Items.Count,
+            };
+            index.Items.Add(latestPageItem);
+        }
+
+        index.CommitId = latestPageItem.CommitId;
+        index.CommitTimestamp = latestPageItem.CommitTimestamp;
+        index.Count = index.Items.Count;
+        index.NuGetLastCreated = lastCommit.NuGetLastCreated;
+        index.NuGetLastDeleted = lastCommit.NuGetLastDeleted;
+        index.NuGetLastEdited = lastCommit.NuGetLastEdited;
+
+        if (indexResult is not null)
+        {
+            await _store.UpdateIndexAsync(index, indexResult.ETag);
+        }
+        else
+        {
+            await _store.AddIndexAsync(index);
         }
     }
 
